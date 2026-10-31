@@ -1,7 +1,6 @@
 package dev.customgui;
 
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
@@ -14,6 +13,7 @@ import net.minecraft.sounds.SoundEvents;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class CustomGuiScreen extends Screen {
 
@@ -248,16 +248,35 @@ public class CustomGuiScreen extends Screen {
 
     private void openShop() {
         try {
-            Util.getPlatform().openUri(URI.create(CustomGuiConfig.get().shopUrl));
+            openInBrowser(CustomGuiConfig.get().shopUrl);
         } catch (Exception e) {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
-                mc.player.displayClientMessage(
+                mc.player.sendSystemMessage(
                         Component.literal("Shop-Link konnte nicht geöffnet werden: " + e.getMessage())
-                                .withStyle(ChatFormatting.RED), false);
+                                .withStyle(ChatFormatting.RED));
             }
         }
         this.onClose();
+    }
+
+    /** Öffnet einen http(s)-Link im Standard-Browser (nur mit Java-Mitteln, ohne Minecraft-API). */
+    private static void openInBrowser(String url) throws Exception {
+        URI uri = URI.create(url.trim());
+        String scheme = uri.getScheme();
+        if (scheme == null || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
+            throw new IllegalArgumentException("Es sind nur http(s)-Links erlaubt");
+        }
+        String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+        ProcessBuilder pb;
+        if (os.contains("win")) {
+            pb = new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", uri.toString());
+        } else if (os.contains("mac")) {
+            pb = new ProcessBuilder("open", uri.toString());
+        } else {
+            pb = new ProcessBuilder("xdg-open", uri.toString());
+        }
+        pb.start();
     }
 
     @Override
